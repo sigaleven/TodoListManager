@@ -6,5 +6,6 @@
     <string name="hello_world">Hello world!</string>
     <string name="add">Add</string>
     <string name="Delete">Delete</string>
+    <string name="title_activity_add_new_to_do_list">AddNewToDoListActivity</string>
 
 </resources>

@@ -3,6 +3,8 @@
     package="com.example.ex2todolist"
     android:versionCode="1"
     android:versionName="1.0" >
+    
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <uses-sdk
         android:minSdkVersion="8"
@@ -21,6 +23,11 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name="il.ac.huji.todolist.AddNewToDoListActivity"
+            android:theme="@android:style/Theme.Dialog"
+            android:label="@string/title_activity_add_new_to_do_list" >
         </activity>
     </application>
 
