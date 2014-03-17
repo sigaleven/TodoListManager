@@ -48,6 +48,8 @@ public class AddNewToDoListActivity extends Activity implements OnClickListener 
 	public void onClick(View arg0) {
 
 		if(arg0.getId()==R.id.btnCancel){
+			Intent intent = new Intent(getApplicationContext(),TodoListManagerActivity.class);
+			setResult(RESULT_CANCELED,intent);
 			finish();
 		}
 		if(arg0.getId()==R.id.btnOk){

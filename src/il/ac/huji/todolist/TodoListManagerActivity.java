@@ -46,7 +46,7 @@ private static final int CALL_ID = 12345;
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		
 		// identifies which activity returned these results
-		if (requestCode == 1) {
+		if (resultCode ==RESULT_OK) {
 			String[] arr = new String[2];
 			
 			String itemTitle=data.getStringExtra("title");          
@@ -100,9 +100,8 @@ private static final int CALL_ID = 12345;
 	      if(item.getItemId()==CALL_ID){
 	    	 String title = toDoList.get(info.position)[0];
 	    	 title = (title.replace("-", ""));
-	    	 int phoneNum = Integer.parseInt(title.replace("Call ", ""));
 	    	 Intent dial = new Intent(Intent.ACTION_DIAL, 
-			 Uri.parse("tel:"+phoneNum)); 
+			 Uri.parse("tel:"+title.replace("Call ", ""))); 
 			startActivity(dial);
 	      }
 	      return super.onContextItemSelected(item);
