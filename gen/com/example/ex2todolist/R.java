@@ -26,17 +26,16 @@ public final class R {
         public static final int page_background2=0x7f020002;
     }
     public static final class id {
-        public static final int action_settings=0x7f080008;
+        public static final int action_settings=0x7f080007;
         public static final int btnCancel=0x7f080002;
         public static final int btnOk=0x7f080003;
-        public static final int date=0x7f080007;
         public static final int datePicker=0x7f080001;
         public static final int edtNewItem=0x7f080000;
-        public static final int ll=0x7f080005;
         public static final int lstTodoItems=0x7f080004;
-        public static final int menuItemAdd=0x7f080009;
-        public static final int menuItemDelete=0x7f08000a;
-        public static final int title=0x7f080006;
+        public static final int menuItemAdd=0x7f080008;
+        public static final int menuItemDelete=0x7f080009;
+        public static final int txtTodoDueDate=0x7f080006;
+        public static final int txtTodoTitle=0x7f080005;
     }
     public static final class layout {
         public static final int activity_add_new_to_do_list=0x7f030000;

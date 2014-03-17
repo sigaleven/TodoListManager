@@ -37,8 +37,8 @@ public class CustomListAdapter extends ArrayAdapter<String[]>{
 			mView = vi.inflate(R.layout.list_view, null);
 		}
 
-		TextView tvTitle = (TextView) mView.findViewById(R.id.title);
-		TextView tvDate = (TextView) mView.findViewById(R.id.date);
+		TextView tvTitle = (TextView) mView.findViewById(R.id.txtTodoTitle);
+		TextView tvDate = (TextView) mView.findViewById(R.id.txtTodoDueDate);
 
 		String title = toDoList.get(position)[0];
 		String date = toDoList.get(position)[1];
