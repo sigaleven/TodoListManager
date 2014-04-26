@@ -2,6 +2,7 @@ package il.ac.huji.todolist;
 
 import java.text.SimpleDateFormat;
 
+import com.parse.DeleteCallback;
 import com.parse.FindCallback;
 import com.parse.GetCallback;
 import com.parse.Parse;
@@ -9,6 +10,7 @@ import com.parse.ParseException;
 import com.parse.ParseObject;
 import com.parse.ParseQuery;
 import com.parse.ParseUser;
+import com.parse.SaveCallback;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -17,12 +19,11 @@ import java.util.List;
 import com.example.ex2todolist.R;
 
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -31,15 +32,17 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
 public class TodoListManagerActivity extends Activity {
 
 	private static final int CALL_ID = 12345;
 	ArrayList<String[]> toDoList;
-	CustomListAdapter adapter;
+	public CustomListAdapter adapter;
 	ListView list;
 	CustomListAdapter myListView;
 
@@ -47,10 +50,10 @@ public class TodoListManagerActivity extends Activity {
 	private static String PARSE_APPLICATION_ID = "SOslw4rzYrqYoRH6vx6A2JtuTm9DGMHsEf1xqvdJ";
 	private static String PARSE_CLIENT_KEY = "UxvXH56PVOqVanDugUVgZ6BJ5hO3ROX560XuCKw4";
 
-	private SQLiteDatabase db;
 	private String deviceId; 
 	public ParseUser curUser;
-	private DBHelper helper;
+	
+	ProgressBar progressBar;
 
 
 	@Override
@@ -62,12 +65,9 @@ public class TodoListManagerActivity extends Activity {
 		ParseUser.enableAutomaticUser();
 		curUser = ParseUser.getCurrentUser();
 		curUser.saveInBackground();
-		
+
 		TelephonyManager mngr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE); 
 		deviceId = mngr.getDeviceId();
-		helper = new DBHelper(this);
-		helper.onUpgrade(helper.getWritableDatabase(), 0, 0);
-		db = helper.getWritableDatabase();
 
 		toDoList = new ArrayList<String[]>();
 		adapter = new CustomListAdapter(this,R.layout.list_view, toDoList);
@@ -76,18 +76,22 @@ public class TodoListManagerActivity extends Activity {
 		registerForContextMenu(list);
 		adapter.notifyDataSetChanged();
 		
+		progressBar = new ProgressBar(getApplicationContext(), null, android.R.attr.progressBarStyleSmall);
+		ViewGroup layout = (ViewGroup) findViewById(android.R.id.content).getRootView();
+		layout.addView(progressBar);
+		progressBar.setVisibility(View.GONE);
+
 		//show data from parse
-		setDataFromParse();
+		new AsyncSetDataFromParse().execute();
 	}
 
-	
+
 	@Override
 	protected void onDestroy() {
-		db.close();
 		super.onDestroy();
 	}
-	
-	
+
+
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
@@ -109,20 +113,20 @@ public class TodoListManagerActivity extends Activity {
 			arr[1] = itemDateStr;
 			toDoList.add(arr);
 			adapter.notifyDataSetChanged();
-			
+
 			//update Parse ADD
+			progressBar.setVisibility(View.VISIBLE);
 			ParseObject po = new ParseObject("todo");
 			po.put("title", arr[0]);
 			po.put("due", arr[1]);
 			po.put("user", curUser);
 			po.put("userId", deviceId);
-			po.saveInBackground();
-
-			//update SQLite ADD
-			ContentValues todoDB = new ContentValues();
-			todoDB.put("title", arr[0]);
-			todoDB.put("due", arr[1]);
-			db.insert("todo_db", null, todoDB);
+			po.saveInBackground(new SaveCallback() {
+				@Override
+				public void done(ParseException e) {
+					progressBar.setVisibility(View.GONE);
+				}
+			});
 		}
 	}
 
@@ -154,6 +158,7 @@ public class TodoListManagerActivity extends Activity {
 		if(item.getItemId()==R.id.menuItemDelete){
 
 			//update Parse DELETE
+			progressBar.setVisibility(View.VISIBLE);
 			ParseQuery<ParseObject> query = ParseQuery.getQuery("todo");
 			query.whereEqualTo("title", toDoList.get(info.position)[0]);
 			query.whereEqualTo("due", toDoList.get(info.position)[1]);
@@ -164,20 +169,21 @@ public class TodoListManagerActivity extends Activity {
 					if (object == null) {
 						Log.d("todo", "error cant find delete");
 					} else {
-						object.deleteInBackground();
+						object.deleteInBackground(new DeleteCallback(){
+							@Override
+							public void done(ParseException e) {
+								progressBar.setVisibility(View.GONE);
+							}
+						});
 						Log.d("todo", "delete the require object");
 					}
 				}
 			});
-			
+
 			//delete from array
 			toDoList.remove(info.position);
 			adapter.notifyDataSetChanged();
-			
-			//syncSQLite();
-			db.delete("todo_db", null, null);
-			syncSQLite();
-			
+
 		}
 		if(item.getItemId()==CALL_ID){
 			String title = toDoList.get(info.position)[0];
@@ -201,51 +207,54 @@ public class TodoListManagerActivity extends Activity {
 		return super.onOptionsItemSelected(item);
 	}
 
-	//===================================================================
-	//======================= helper methods ============================
-	//===================================================================
-	
-	
-	/*
-	 * update SQLite according to the current list
-	 */
-	private void syncSQLite() {
-		//Sync SQLite
-		for(int i=0 ; i< toDoList.size() ; i++){
-			ContentValues todoDB = new ContentValues();
-			todoDB.put("title", toDoList.get(i)[0]);
-			todoDB.put("due", toDoList.get(i)[1]);
-			db.insert("todo_db", null, todoDB);
+	private class AsyncSetDataFromParse extends AsyncTask<Void, String, Void> {
+
+
+		@Override
+		protected void onPreExecute() {
+			progressBar.setVisibility(View.VISIBLE);
+			super.onPreExecute();
+		}
+
+		@Override
+		protected Void doInBackground(Void... params) {
+			ParseQuery<ParseObject> query = ParseQuery.getQuery("todo");
+			query.whereEqualTo("userId", deviceId);
+			query.addAscendingOrder("createdAt");
+			try {
+				List<ParseObject> items = query.find();
+				if (items!=null){
+					for(int i =0 ; i<items.size();i++){
+						publishProgress(items.get(i).getString("title"),items.get(i).getString("due"));
+					}
+				}
+				return null;
+
+			} catch (ParseException e) {
+				Log.d("todo", "Error: " + e.getMessage());
+				e.printStackTrace();
+				return null;
+			}
+		}
+
+		@Override
+		protected void onProgressUpdate(String... values) {
+			if(values!=null){
+				progressBar.setVisibility(View.GONE);
+				String[] arr = new String[2];
+				arr[0] = values[0];
+				arr[1] = values[1];
+				toDoList.add(arr);
+				adapter.notifyDataSetChanged();
+			}
+			super.onProgressUpdate(values);
+		}
+
+		@Override
+		protected void onPostExecute(Void result) {
+			progressBar.setVisibility(View.GONE);
+			super.onPostExecute(result);
 		}
 	}
-	
-	/*
-	 * set data from Parse and update sqLite
-	 */
-	private void setDataFromParse() {
-		ParseQuery<ParseObject> query = ParseQuery.getQuery("todo");
-		query.whereEqualTo("userId", deviceId);
-		query.addAscendingOrder("createdAt");
-		query.findInBackground(new FindCallback<ParseObject>() {
-		    public void done(List<ParseObject> items, ParseException e) {
-		        if (e == null) {
-		            Log.d("todo", "Retrieved " + items.size() + " items");
-		            for(int i =0 ; i<items.size();i++){
-		            	Log.d("todo", "item: "+items.get(i).get("title"));
-		            	String[] arr = new String[2];
-						arr[0] = items.get(i).getString("title");
-						arr[1] = items.get(i).getString("due");
-						toDoList.add(arr);
-						adapter.notifyDataSetChanged();
-		            }
-		            syncSQLite();
-		        } else {
-		            Log.d("todo", "Error: " + e.getMessage());
-		        }
-		    }
-		});
-		
-	}
-	
-	
+
 }
